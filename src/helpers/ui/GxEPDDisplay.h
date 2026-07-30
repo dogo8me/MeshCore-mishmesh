@@ -36,6 +36,10 @@ class GxEPDDisplay : public DisplayDriver {
   uint16_t _curr_color;
   CRC32 display_crc;
   int last_display_crc_value = 0;
+  uint32_t _last_refresh_ms = 0;
+  uint32_t _last_full_refresh_ms = 0;
+  uint16_t _partial_refresh_count = 0;
+  bool _force_full_refresh = true;
 
 public:
 #if defined(EINK_DISPLAY_MODEL)
