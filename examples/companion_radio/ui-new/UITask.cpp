@@ -188,7 +188,7 @@ class HomeScreen : public UIScreen {
       sensors_lpp.reset();
       sensors_nb = 0;
       sensors_lpp.addVoltage(TELEM_CHANNEL_SELF, (float)board.getBattMilliVolts() / 1000.0f);
-      sensors.querySensors(0xFF, sensors_lpp);
+      if (_sensors) _sensors->querySensors(0xFF, sensors_lpp);
       LPPReader reader (sensors_lpp.getBuffer(), sensors_lpp.getSize());
       uint8_t channel, type;
       while(reader.readHeader(channel, type)) {
@@ -253,7 +253,7 @@ class HomeScreen : public UIScreen {
     snprintf(tmp, sizeof(tmp), "Power: %s", board.isExternalPowered() ? "USB/ext" : "battery");
     display.print(tmp);
 #if ENV_INCLUDE_GPS == 1
-    auto* nmea = sensors.getLocationProvider();
+    auto* nmea = _sensors ? _sensors->getLocationProvider() : nullptr;
     display.setCursor(0, 62);
     if (!_task->getGPSState()) {
       display.print("GPS: off");
@@ -362,7 +362,7 @@ class HomeScreen : public UIScreen {
 
   void renderMap(DisplayDriver& display) {
     char tmp[80];
-    LocationProvider* nmea = sensors.getLocationProvider();
+    LocationProvider* nmea = _sensors ? _sensors->getLocationProvider() : nullptr;
     updateTrackFromGps(nmea);
 
     int mapX = 1;
@@ -430,19 +430,19 @@ class HomeScreen : public UIScreen {
     display.setTextSize(1);
     display.setColor(DisplayDriver::LIGHT);
     display.setCursor(0, 18);
-    snprintf(tmp, sizeof(tmp), "Enter: %s", _map_control == Navigate ? "map mode" : "next map tool");
+    snprintf(tmp, sizeof(tmp), "Enter: BLE toggle");
     display.print(tmp);
     display.setCursor(0, 29);
-    snprintf(tmp, sizeof(tmp), "Click: next page");
+    snprintf(tmp, sizeof(tmp), "Select: GPS toggle");
     display.print(tmp);
     display.setCursor(0, 40);
-    snprintf(tmp, sizeof(tmp), "Dbl: prev page");
+    snprintf(tmp, sizeof(tmp), "Map controls: on Map page");
     display.print(tmp);
     display.setCursor(0, 51);
     snprintf(tmp, sizeof(tmp), "GPS: %s", _task->getGPSState() ? "ON" : "OFF");
     display.print(tmp);
     display.setCursor(0, 62);
-    snprintf(tmp, sizeof(tmp), "BLE: %s", _task->isSerialEnabled() ? "ON" : "OFF");
+    snprintf(tmp, sizeof(tmp), "BLE: %s  MAP:%s", _task->isSerialEnabled() ? "ON" : "OFF", mapModeLabel());
     display.print(tmp);
   }
 
@@ -519,9 +519,6 @@ public:
 #endif
     } else if (_page == HomePage::SETTINGS) {
       renderSettingsPage(display);
-      display.setColor(DisplayDriver::GREEN);
-      display.drawTextLeftAlign(0, 73, "Enter: BLE toggle");
-      display.drawTextRightAlign(display.width() - 1, 73, mapModeLabel());
     } else if (_page == HomePage::SHUTDOWN) {
       display.setColor(DisplayDriver::GREEN);
       display.setTextSize(1);
