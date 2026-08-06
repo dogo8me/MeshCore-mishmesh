@@ -82,6 +82,48 @@ talks over USB serial. Either way the device is fully usable on its own.
 
 Or [build it yourself](#building-from-source).
 
+### ThinkNode M5 quick guide
+
+#### Controls (ui-new)
+
+On ThinkNode M5 (single user button), the current `ui-new` controls are:
+
+- **Single click**: next page
+- **Double click**: previous page
+- **Long press**: enter / page action
+- **Triple click**: select action
+
+Page-specific actions:
+
+- **Node page**: long press sends advert
+- **Settings page**:
+  - long press toggles BLE/serial
+  - triple click toggles GPS
+- **Map page**:
+  - triple click clears track breadcrumbs
+  - long press cycles map mode label
+- **Power page**: long press hibernates
+
+#### Flashing onto ThinkNode M5
+
+If you are building from this repository:
+
+```sh
+export FIRMWARE_VERSION=mishmesh-dev
+pio run -e ThinkNode_M5_companion_radio_ble -t upload
+# or:
+pio run -e ThinkNode_M5_companion_radio_usb -t upload
+```
+
+- Use `*_ble` if you want Bluetooth pairing with the phone/web app.
+- Use `*_usb` if you want USB serial companion mode.
+
+If upload does not start, put the board in ROM bootloader mode (hold **BOOT**,
+tap **RESET**, then release **BOOT**) and run the command again.
+
+If you prefer prebuilt files, download the ThinkNode M5 companion firmware from
+the release/flasher page and flash with the ESP32 web flasher or `esptool`.
+
 ### Building from source
 
 A PlatformIO project. With the repo cloned:

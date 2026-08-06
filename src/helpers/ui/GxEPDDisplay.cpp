@@ -1,5 +1,6 @@
 
 #include "GxEPDDisplay.h"
+#include <Arduino.h>
 
 #ifdef EXP_PIN_BACKLIGHT
   #include <PCA9557.h>
@@ -10,16 +11,34 @@
   #define DISPLAY_ROTATION 3
 #endif
 
-#ifdef ESP32
-  SPIClass SPI1 = SPIClass(FSPI);
+#ifndef EINK_MIN_UPDATE_INTERVAL_MS
+  #define EINK_MIN_UPDATE_INTERVAL_MS 1000
 #endif
 
-bool GxEPDDisplay::begin() {
-  display.epd2.selectSPI(SPI1, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+#ifndef EINK_FULL_REFRESH_EVERY
+  #define EINK_FULL_REFRESH_EVERY 10
+#endif
+
+#ifndef EINK_FORCE_FULL_REFRESH_MS
+  #define EINK_FORCE_FULL_REFRESH_MS 90000
+#endif
+
+static SPIClass& displaySpi() {
 #ifdef ESP32
-  SPI1.begin(PIN_DISPLAY_SCLK, PIN_DISPLAY_MISO, PIN_DISPLAY_MOSI, PIN_DISPLAY_CS);
+  static SPIClass spi = SPIClass(FSPI);
+  return spi;
 #else
-  SPI1.begin();
+  return SPI;
+#endif
+}
+
+bool GxEPDDisplay::begin() {
+  SPIClass& spi = displaySpi();
+  display.epd2.selectSPI(spi, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+#ifdef ESP32
+  spi.begin(PIN_DISPLAY_SCLK, PIN_DISPLAY_MISO, PIN_DISPLAY_MOSI, PIN_DISPLAY_CS);
+#else
+  spi.begin();
 #endif
   display.init(115200, true, 2, false);
   display.setRotation(DISPLAY_ROTATION);
@@ -27,11 +46,15 @@ bool GxEPDDisplay::begin() {
   display.setPartialWindow(0, 0, display.width(), display.height());
 
   display.fillScreen(GxEPD_WHITE);
-  display.display(true);
+  display.display(false);
   #if DISP_BACKLIGHT
   digitalWrite(DISP_BACKLIGHT, LOW);
   pinMode(DISP_BACKLIGHT, OUTPUT);
   #endif
+  _last_refresh_ms = millis();
+  _last_full_refresh_ms = _last_refresh_ms;
+  _partial_refresh_count = 0;
+  _force_full_refresh = false;
   _init = true;
   return true;
 }
@@ -43,6 +66,7 @@ void GxEPDDisplay::turnOn() {
 #elif defined(EXP_PIN_BACKLIGHT) && !defined(BACKLIGHT_BTN)
   expander.digitalWrite(EXP_PIN_BACKLIGHT, HIGH);
 #endif
+  _force_full_refresh = true;
   _isOn = true;
 }
 
@@ -59,6 +83,7 @@ void GxEPDDisplay::clear() {
   display.fillScreen(GxEPD_WHITE);
   display.setTextColor(GxEPD_BLACK);
   display_crc.reset();
+  _force_full_refresh = true;
 }
 
 void GxEPDDisplay::startFrame(Color bkg) {
@@ -172,8 +197,38 @@ uint16_t GxEPDDisplay::getTextWidth(const char* str) {
 
 void GxEPDDisplay::endFrame() {
   uint32_t crc = display_crc.finalize();
-  if (crc != last_display_crc_value) {
-    display.display(true);
-    last_display_crc_value = crc;
+  if (crc == last_display_crc_value) {
+    return;
   }
+
+  uint32_t now = millis();
+  if (!_force_full_refresh && EINK_MIN_UPDATE_INTERVAL_MS > 0 &&
+      (now - _last_refresh_ms) < EINK_MIN_UPDATE_INTERVAL_MS) {
+    return;
+  }
+
+  bool do_full_refresh = _force_full_refresh;
+  if (!do_full_refresh && EINK_FULL_REFRESH_EVERY > 0 &&
+      _partial_refresh_count >= EINK_FULL_REFRESH_EVERY) {
+    do_full_refresh = true;
+  }
+  if (!do_full_refresh && EINK_FORCE_FULL_REFRESH_MS > 0 &&
+      (now - _last_full_refresh_ms) >= EINK_FORCE_FULL_REFRESH_MS) {
+    do_full_refresh = true;
+  }
+
+  if (do_full_refresh) {
+    display.setFullWindow();
+    display.display(false);
+    display.setPartialWindow(0, 0, display.width(), display.height());
+    _last_full_refresh_ms = now;
+    _partial_refresh_count = 0;
+    _force_full_refresh = false;
+  } else {
+    display.display(true);
+    _partial_refresh_count++;
+  }
+
+  _last_refresh_ms = now;
+  last_display_crc_value = crc;
 }
