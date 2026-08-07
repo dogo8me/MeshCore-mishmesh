@@ -2,27 +2,31 @@
   <img src="mishmesh/docs/img/logo.png" alt="mishmesh" width="420">
 </p>
 
-<p align="center"><b>Standalone companion firmware for MeshCore radios.</b></p>
+<p align="center"><b>Phone-optional MeshCore companion firmware with a full on-device UI.</b></p>
 
 <p align="center">
   <a href='https://ko-fi.com/W3V222VPDT' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 </p>
 
-This is a fork of [MeshCore](https://github.com/meshcore-dev/MeshCore) that adds
-**mishmesh**, a standalone user interface. MeshCore's companion
-firmware normally leans on a paired phone for most things; mishmesh
-puts messaging, contacts, and configuration on the device, so the radio is
-useful on its own and the phone is optional. It can currently do almost everything
-without a phone.
+`mishmesh` is a fork of [MeshCore](https://github.com/meshcore-dev/MeshCore) focused on standalone operation.  
+Instead of relying on a paired phone for core tasks, it puts messaging, contacts, repeater tools, and settings directly on the radio.
 
-It currently targets Wio Trackler L1 (pro).
-E-ink support will be there at some point, I currently don't have a device to test it.
-In theory we can support more devices with enough buttons.
+## What this firmware adds
 
-The underlying MeshCore firmware is mostly unchanged; see [About MeshCore](#about-meshcore)
-below.
+- Full local messaging workflow (DMs, channels, rooms)
+- Contact management and path controls
+- Repeater login + management from device
+- On-device clock tools (stopwatch/timer/alarm/world clock)
+- Airtime and duty-cycle visibility
+- First-boot onboarding and local settings
 
-### Screens
+## Current hardware target
+
+Primary target in this repository: **Wio Tracker L1 (Pro)**.
+
+ThinkNode M5 companion environments are included and documented below.
+
+## Screens
 
 <table>
   <tr>
@@ -52,135 +56,104 @@ below.
   </tr>
 </table>
 
-### mishmesh features
+## Install (Wio Tracker L1)
 
-- **Messaging** - direct messages, channels, and room servers, with delivery
-  status, auto-retry, and path reset when a route goes stale.
-- **Contacts** - favourites and per-kind tabs (people, repeaters, rooms),
-  rename, ping, telemetry requests, and path management.
-- **Repeater management** - log in to a repeater and configure it from the
-  device: settings, access list, neighbours, region.
-- **Clock** - stopwatch, timer, alarm, and a world clock with DST-aware
-  timezones.
-- **Airtime** - live duty-cycle and airtime usage against the TX budget.
-- **Adverts and sharing** - send adverts and share contacts/channels as QR.
-- **Settings on-device** - radio config (frequency, bandwidth, spreading
-  factor, TX power), screen sleep, sound, and timezone.
-- **First-boot onboarding** - a short wizard for name, region, and time.
+Download the latest `WioTrackerL1_companion_radio_*_mishmesh-*.uf2` from [Releases](../../releases), then:
 
-### Install
+1. Connect the Wio Tracker L1 over USB.
+2. Double-tap reset to mount the UF2 drive.
+3. Copy the `.uf2` file to the drive.
 
-Grab the latest `WioTrackerL1_companion_radio_*_mishmesh-*.uf2` from
-[Releases](../../releases), then:
+Use `*_ble` for Bluetooth companion mode or `*_usb` for USB-serial companion mode.
 
-1. Plug the Wio Tracker L1 into USB.
-2. Double-tap reset. It mounts as a USB drive.
-3. Drop the `.uf2` onto it. It reboots into mishmesh.
+## ThinkNode M5
 
-The `ble` build pairs with the phone/web app over Bluetooth; the `usb` build
-talks over USB serial. Either way the device is fully usable on its own.
+### ThinkNode M5 hardware specs
 
-Or [build it yourself](#building-from-source).
+Compiled from the Meshtastic device catalog for ThinkNode M5 / Elecrow:
 
-### ThinkNode M5 quick guide
+- **MCU:** ESP32-S3 (Wi-Fi 2.4 GHz b/g/n + BLE 5)
+- **LoRa radio:** Semtech SX1262
+- **Display:** 1.54" E-Ink
+- **GNSS:** GPS / GLONASS / BeiDou / QZSS
+- **Battery:** 1200 mAh rechargeable Li-ion
+- **Connector:** USB-C
+- **Band variants:** US 902–928 MHz or EU 868 MHz
 
-#### Controls (ui-new)
+Reference: Meshtastic hardware docs, ThinkNode series page (which links Elecrow’s official wiki).
 
-On ThinkNode M5 (single user button), the current `ui-new` controls are:
+### ThinkNode M5 buttons in this firmware
 
-- **Single click**: next page
-- **Double click**: previous page
-- **Long press**: enter / page action
-- **Triple click**: select action
+ThinkNode M5 has **two physical buttons** mapped by this repo:
 
-Page-specific actions:
+- `PIN_USER_BTN` (GPIO 21): primary UI input
+- `PIN_BUTTON2` (GPIO 14): secondary button used as `BACKLIGHT_BTN`
 
-- **Node page**: long press sends advert
-- **Settings page**:
+Current `ui-new` behavior:
+
+- **Primary button single click:** next page
+- **Primary button double click:** previous page
+- **Primary button long press:** enter / page action
+- **Primary button triple click:** select action
+- **Secondary button:** backlight control path (`BACKLIGHT_BTN`), separate from page navigation
+
+Page-specific primary-button actions:
+
+- **Node page:** long press sends advert
+- **Settings page:**
   - long press toggles BLE/serial
   - triple click toggles GPS
-- **Map page**:
+- **Map page:**
   - triple click clears track breadcrumbs
   - long press cycles map mode label
-- **Power page**: long press hibernates
+- **Power page:** long press hibernates
 
-#### Flashing onto ThinkNode M5
-
-If you are building from this repository:
+### Flashing ThinkNode M5 from this repo
 
 ```sh
 export FIRMWARE_VERSION=mishmesh-dev
 pio run -e ThinkNode_M5_companion_radio_ble -t upload
-# or:
+# or
 pio run -e ThinkNode_M5_companion_radio_usb -t upload
 ```
 
-- Use `*_ble` if you want Bluetooth pairing with the phone/web app.
-- Use `*_usb` if you want USB serial companion mode.
+If upload does not begin, enter ROM bootloader mode (hold **BOOT**, tap **RESET**, release **BOOT**) and retry.
 
-If upload does not start, put the board in ROM bootloader mode (hold **BOOT**,
-tap **RESET**, then release **BOOT**) and run the command again.
-
-If you prefer prebuilt files, download the ThinkNode M5 companion firmware from
-the release/flasher page and flash with the ESP32 web flasher or `esptool`.
-
-### Building from source
-
-A PlatformIO project. With the repo cloned:
+## Build from source
 
 ```sh
 export FIRMWARE_VERSION=mishmesh-dev
-pio run -e WioTrackerL1_companion_radio_usb_mishmesh -t upload   # or _ble_mishmesh
+pio run -e WioTrackerL1_companion_radio_usb_mishmesh -t upload
+# or WioTrackerL1_companion_radio_ble_mishmesh
 ```
 
-Package the `.uf2` / `.zip` like a release does (lands in `out/`):
+Package release artifacts to `out/`:
 
 ```sh
 export FIRMWARE_VERSION=mishmesh-dev
 sh build.sh build-firmware WioTrackerL1_companion_radio_usb_mishmesh
 ```
 
-### Emoji
+## Emoji
 
-Emoji use the [EmojiMania](https://idanro.itch.io/emojimania) glyph set - a
-purchased license that doesn't allow redistributing the art, so the glyphs live
-outside this repository. Official release builds compile them in. Building from
-source, or any fork, is fully supported and looks identical, except emoji render
-as a placeholder block instead of the glyph.
+Emoji rendering uses the licensed [EmojiMania](https://idanro.itch.io/emojimania) glyph set.  
+This repository does not redistribute those glyph assets. Official release builds include them; local/fork builds work normally but render placeholder blocks unless you provide your own licensed sheet.
 
-If you own EmojiMania, you can build with emoji yourself: drop your sheet in and
-run the generator per
-[`mishmesh/text/emoji-tools/README.md`](./mishmesh/text/emoji-tools/README.md).
+See: [`mishmesh/text/emoji-tools/README.md`](./mishmesh/text/emoji-tools/README.md)
 
-### How mishmesh fits
+## Architecture notes
 
-The framework lives under [`mishmesh/`](./mishmesh); a thin adapter in
-[`examples/companion_radio/ui-mishmesh/`](./examples/companion_radio/ui-mishmesh)
-bridges it to the companion app without touching `main.cpp`. Screens are `Applet`
-subclasses on a fixed stack managed by `AppletHost`; all drawing goes through
-`Canvas`. Text and icons are bitmap fonts rendered with mcufont (Nokia Cellphone
-FC, Tom Thumb, Pixelarticons); the logo wordmark is set in the LastPriestess pixel
-font by Christina Antoinette Neofotistou.
-
-### AI disclosure
-
-It's mixed. I use AI a lot at work. Side projects are a way for me to keep my
-programming skills alive. This project contains a mix of manually written and AI
-generated (but manually reviewed) code. I used it more heavily in brainstorming
-ideas and discovering the original codebase. Don't use this if you're a purist.
-
----
+- UI framework: [`mishmesh/`](./mishmesh)
+- Companion bridge adapter: [`examples/companion_radio/ui-mishmesh/`](./examples/companion_radio/ui-mishmesh)
+- Screen model: `Applet` subclasses managed by `AppletHost`
+- Rendering: `Canvas` + bitmap font pipeline
 
 ## About MeshCore
 
-mishmesh is a fork of **MeshCore**, a lightweight, portable C++ library for
-multi-hop packet routing over LoRa and other packet radios. The mesh core, the
-companion firmware, supported hardware and the flasher, the phone/web apps, and the
-protocol documentation all come from that project. For anything about MeshCore
-itself, see the upstream repository:
+This project keeps the MeshCore foundation and protocol model intact, while adding a standalone-first UX layer.
 
-**https://github.com/meshcore-dev/MeshCore**
+Upstream MeshCore: **https://github.com/meshcore-dev/MeshCore**
 
 ## License
 
-MIT, the same as MeshCore.
+MIT (same as MeshCore).
